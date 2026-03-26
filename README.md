@@ -21,7 +21,7 @@ $$
 
 where (p) is the electron spectral index.
 
-While widely used, this expression is only valid for idealized power-law distributions and uniform magnetic fields. In realistic astrophysical environments—such as blazar jets—the electron distribution is shaped by acceleration, cooling, and transport processes, and can deviate significantly from a pure power law.
+While widely used, this expression is only valid for idealized power-law distributions and uniform magnetic fields. In realistic astrophysical environments,such as blazar jets,the electron distribution is shaped by acceleration, cooling, and transport processes, and can deviate significantly from a pure power law.
 
 This code instead computes the polarization using a **general electron energy distribution**, enabling a fully numerical and physically consistent treatment.
 
