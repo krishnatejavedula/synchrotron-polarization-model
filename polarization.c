@@ -11,8 +11,11 @@ Required libraries:
   - GSL        : GNU Scientific Library
   - libm       : Standard math library
 
-Usage:
+Usage (SSA off):
   ./code <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> [LookupTable.dat]
+
+Usage (SSA on):
+  ./code <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> [LookupTable.dat] <nu-tau.dat>
 
 Required input files:
   1. Electron-Distribution.dat
@@ -56,6 +59,8 @@ double log_integrate(double (*func)(double, void *), double gamma_min, double ga
 double calculate_polarization(double K_scale, double nu);
 double interpolate_nu(double nu_query, double *nu_arr, double *flux_arr, int size);
 void load_ftotal(const char *filename);
+void load_tau(const char *filename);
+double calculate_ssa_weight(double tau);
 double calculate_x(void);
 
 // ------------------ Main code ------------------
@@ -68,9 +73,19 @@ int main(int argc, char *argv[])
     }
 
     // Required argument check
-    if (argc < 5 || (polarization_mode == POL_LOOKUP && argc < 6))
+    int required_argc = 5;
+    if (polarization_mode == POL_LOOKUP)
     {
-        printf("Usage: %s <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> [LookupTable.dat]\n", argv[0]);
+        required_argc++;
+    }
+    if (ssa_mode != SSA_OFF)
+    {
+        required_argc++;
+    }
+
+    if (argc < required_argc)
+    {
+        printf("Usage: %s <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> [LookupTable.dat] [nu-tau.dat]\n", argv[0]);
         return 1;
     }
 
@@ -112,6 +127,18 @@ int main(int argc, char *argv[])
         load_lookup_table(argv[5]);
     }
 
+    if (ssa_mode != SSA_OFF)
+    {
+        int tau_arg = (polarization_mode == POL_LOOKUP) ? 6 : 5;
+        load_tau(argv[tau_arg]);
+        if (tau_size < 2)
+        {
+            printf("Error: No usable tau data loaded from %s.\n", argv[tau_arg]);
+            fclose(outfile);
+            return 1;
+        }
+    }
+
     double deltaB = calculate_deltaB();
     double eta = calculate_eta();
     double N_gamma = calculate_N_gamma(1000);
@@ -124,15 +151,44 @@ int main(int argc, char *argv[])
         double f_ssa = flux_arr[jj];
         double f_total = interpolate_nu(nu, ftotal_nu, ftotal_arr, ftotal_size);
 
-        double synF_ratio = (f_total > 0.0) ? (f_ssa / f_total) : 0.0;
+        double synF_ratio = 0.0;
+        if (f_total > 0.0 && isfinite(f_total) && isfinite(f_ssa))
+        {
+            synF_ratio = f_ssa / f_total;
+            if (!isfinite(synF_ratio) || synF_ratio < 0.0)
+            {
+                synF_ratio = 0.0;
+            }
+            if (synF_ratio > 1.0)
+            {
+                synF_ratio = 1.0;
+            }
+        }
 
         double K_scale = calculate_K(nu);
         double polarization = calculate_polarization(K_scale, nu);
         double eta = calculate_eta();
-        double P_final = polarization * synF_ratio * (1 - eta);
-
-        if (P_final > 0.0 && !isnan(P_final))
+        double ssa_weight = 1.0;
+        if (ssa_mode == SSA_ESCAPE_FACTOR)
         {
+            if (nu >= tau_nu[0] && nu <= tau_nu[tau_size - 1])
+            {
+                double tau = interpolate_nu(nu, tau_nu, tau_arr, tau_size);
+                ssa_weight = calculate_ssa_weight(tau);
+            }
+        }
+        double P_final = polarization * ssa_weight * synF_ratio * (1 - eta) * ff;
+
+        if (isfinite(P_final))
+        {
+            if (P_final < 0.0)
+            {
+                P_final = 0.0;
+            }
+            if (P_final > 1.0)
+            {
+                P_final = 1.0;
+            }
             printf("nu = %.3e Hz | synF_ratio = %.3f | P_final = %.6f\n", nu, synF_ratio, P_final);
             fprintf(outfile, "%.6e %.6f\n", nu, P_final);
         }
@@ -148,6 +204,26 @@ int main(int argc, char *argv[])
 }
 
 // ------------------ Functions ------------------
+
+double calculate_ssa_weight(double tau)
+{
+    if (!isfinite(tau) || tau <= 1.0e-10)
+    {
+        return 1.0;
+    }
+
+    double weight = (1.0 - exp(-tau)) / tau;
+    if (!isfinite(weight) || weight < 0.0)
+    {
+        return 1.0;
+    }
+    if (weight > 1.0)
+    {
+        return 1.0;
+    }
+
+    return weight;
+}
 
 double calculate_K(double nu)
 {
@@ -262,7 +338,7 @@ void load_data(const char *filename)
         return;
     }
     ii = 0;
-    while (fscanf(file, "%lf %lf", &gamma_arr[ii], &elecdist_arr[ii]) == 2 && ii < MAX_DATA)
+    while (ii < MAX_DATA && fscanf(file, "%lf %lf", &gamma_arr[ii], &elecdist_arr[ii]) == 2)
     {
         ii++;
     }
@@ -280,7 +356,7 @@ void load_spectrum(const char *filename)
         return;
     }
     ii = 0;
-    while (fscanf(file, "%lf %lf", &nu_arr[ii], &flux_arr[ii]) == 2 && ii < MAX_SPECTRUM)
+    while (ii < MAX_SPECTRUM && fscanf(file, "%lf %lf", &nu_arr[ii], &flux_arr[ii]) == 2)
     {
         ii++;
     }
@@ -298,7 +374,7 @@ void load_lookup_table(const char *filename)
     }
 
     ii = 0;
-    while (fscanf(file, "%lf %lf %lf", &x_table[ii], &F_table[ii], &G_table[ii]) == 3 && ii < MAX_LOOKUP)
+    while (ii < MAX_LOOKUP && fscanf(file, "%lf %lf %lf", &x_table[ii], &F_table[ii], &G_table[ii]) == 3)
         ii++;
 
     lookup_size = ii;
@@ -473,20 +549,39 @@ void load_ftotal(const char *filename)
     }
 
     int i = 0;
-    while (fscanf(file, "%lf %lf", &ftotal_nu[i], &ftotal_arr[i]) == 2)
+    while (i < MAX_SPECTRUM && fscanf(file, "%lf %lf", &ftotal_nu[i], &ftotal_arr[i]) == 2)
     {
         i++;
-        if (i >= MAX_SPECTRUM)
-        {
-            printf("Warning: Reached max spectrum size (%d). Truncating.\n", MAX_SPECTRUM);
-            break;
-        }
     }
 
     ftotal_size = i;
     fclose(file);
 
     if (ftotal_size < 2)
+    {
+        printf("Error: Not enough data points loaded from %s.\n", filename);
+    }
+}
+void load_tau(const char *filename)
+{
+    FILE *file = fopen(filename, "r");
+    if (!file)
+    {
+        printf("Error: Cannot open file %s\n", filename);
+        tau_size = 0;
+        return;
+    }
+
+    int i = 0;
+    while (i < MAX_SPECTRUM && fscanf(file, "%lf %lf", &tau_nu[i], &tau_arr[i]) == 2)
+    {
+        i++;
+    }
+
+    tau_size = i;
+    fclose(file);
+
+    if (tau_size < 2)
     {
         printf("Error: Not enough data points loaded from %s.\n", filename);
     }

@@ -8,7 +8,7 @@
 #include <math.h>              // Math functions (pow, sqrt, etc.)
 #include <gsl/gsl_sf_bessel.h> // GSL Bessel special functions
 #include <gsl/gsl_errno.h>     // GSL error handling
-#include "constants.h"         // User-defined constants
+#include "parameters.h"         // User-defined constants
 
 // ------------------ Numerical Limits ------------------
 #define UPPER_LIMIT   1e3      // Integration upper limit
@@ -36,6 +36,12 @@
 
 int polarization_mode = POL_LOOKUP;   // Default mode
 
+// ------------------ Synchrotron Self-Absorption Modes ------------------
+#define SSA_OFF            0   // Do not apply SSA weighting
+#define SSA_ESCAPE_FACTOR  1   // Apply (1 - exp(-tau)) / tau
+
+// int ssa_mode = SSA_OFF;        // Default mode
+int ssa_mode = SSA_ESCAPE_FACTOR; 
 // #define POL_UNSCALED 0
 // #define POL_SCALED   1
 
@@ -58,6 +64,10 @@ int spectrum_size = 0;
 double ftotal_nu[MAX_SPECTRUM];  // Frequency grid for f_total
 double ftotal_arr[MAX_SPECTRUM]; // Flux values
 int ftotal_size = 0;
+
+double tau_nu[MAX_SPECTRUM]; // Frequency grid for tau
+double tau_arr[MAX_SPECTRUM]; // SSA optical depth values
+int tau_size = 0;
 
 double x_table[MAX_LOOKUP]; // Array to hold x values
 double F_table[MAX_LOOKUP]; // Array to hold F values
