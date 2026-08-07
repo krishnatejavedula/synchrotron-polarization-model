@@ -29,47 +29,76 @@
 #define G1 (F1 / 2.0)
 #define G2 (F2)
 
-// ------------------ Polarization Evaluation Modes ------------------
+// =================================================================
+// Switch Definitions — valid values for each switch below
+// =================================================================
+
+// Polarization Evaluation Modes
 #define POL_BESSEL      0      // Use GSL Bessel functions
 #define POL_LOOKUP      1      // Use precomputed lookup tables
 #define POL_ANALYTICAL  2      // Use analytical expressions for F and G
 
-int polarization_mode = POL_LOOKUP;   // Default mode
+// Lookup Table Generation Modes
+#define LOOKUP_BESSEL      0   // Generate the table via syn_F / syn_G
+#define LOOKUP_ANALYTICAL  1   // Generate the table via analytical_F / analytical_G
 
-// ------------------ Synchrotron Self-Absorption Modes ------------------
-#define SSA_OFF            0   // Do not apply SSA weighting
-#define SSA_ESCAPE_FACTOR  1   // Apply (1 - exp(-tau)) / tau
+// Master Scaling Switch
+#define POL_UNSCALED  0        // Disable all P_final scaling factors
+#define POL_SCALED    1        // Enable all P_final scaling factors
 
-// int ssa_mode = SSA_OFF;        // Default mode
-int ssa_mode = SSA_ESCAPE_FACTOR; 
-// #define POL_UNSCALED 0
-// #define POL_SCALED   1
+// Synchrotron Self-Absorption Modes
+#define SSA_OFF 0              // Do not apply SSA weighting
+#define SSA_ON  1              // Apply  SSA weighting
 
-// int polarization_variant = POL_SCALED; //
+// Flux Weighting Modes
+#define FLUX_WEIGHT_OFF  0     // Exclude synF_ratio from P_final
+#define FLUX_WEIGHT_ON   1     // Include synF_ratio (synchrotron / total flux ratio)
 
-#define LOOKUP_BESSEL 0
-#define LOOKUP_ANALYTICAL 1
-int lookup_mode = LOOKUP_ANALYTICAL;
+// Field Disorder Modes
+#define FIELD_DISORDER_OFF  0  // Exclude (1 - eta) from P_final
+#define FIELD_DISORDER_ON   1  // Include (1 - eta) field disorder factor
+
+// Turbulence Scaling Modes
+#define TURBULENCE_OFF  0      // Exclude ft from P_final
+#define TURBULENCE_ON   1      // Include ft turbulence scaling factor
+
+// =================================================================
+// Switches — active mode selections (defaults shown)
+// =================================================================
+
+int polarization_mode     = POL_LOOKUP;          // How F(x)/G(x) are evaluated
+int lookup_mode           = LOOKUP_ANALYTICAL;   // How the lookup table is generated
+
+// scaling_mode is applied once in main() via apply_scaling_mode(), which
+// overwrites the four switches below so they can't disagree with it.
+int scaling_mode          = POL_SCALED;          // Master: all factors on/off together
+
+int ssa_mode              = SSA_OFF;             // Include SSA escape weighting
+int flux_weight_mode      = FLUX_WEIGHT_ON;      // Include synF_ratio
+int field_disorder_mode   = FIELD_DISORDER_ON;   // Include (1 - eta)
+int turbulence_mode       = TURBULENCE_ON;       // Include ft
 
 // ------------------ Global Variables ------------------
 
-double gamma_arr[MAX_DATA];    // Array to hold gamma values
-double elecdist_arr[MAX_DATA]; // Array to hold electron distribution values
-int data_size = 0;             // Size of the data loaded (i.e., number of valid points read from the file)
+int ii, jj, kk, nn;              // Shared loop counters
 
-double nu_arr[MAX_SPECTRUM];   // Array to hold gamma values
-double flux_arr[MAX_SPECTRUM]; // Array to hold electron distribution values
+double gamma_arr[MAX_DATA];      // Array to hold gamma values
+double elecdist_arr[MAX_DATA];   // Array to hold electron distribution values
+int data_size = 0;               // Size of the data loaded (i.e., number of valid points read from the file)
+
+double nu_arr[MAX_SPECTRUM];     // Array to hold gamma values
+double flux_arr[MAX_SPECTRUM];   // Array to hold electron distribution values
 int spectrum_size = 0;
 
 double ftotal_nu[MAX_SPECTRUM];  // Frequency grid for f_total
 double ftotal_arr[MAX_SPECTRUM]; // Flux values
 int ftotal_size = 0;
 
-double tau_nu[MAX_SPECTRUM]; // Frequency grid for tau
-double tau_arr[MAX_SPECTRUM]; // SSA optical depth values
+double tau_nu[MAX_SPECTRUM];     // Frequency grid for tau
+double tau_arr[MAX_SPECTRUM];    // SSA optical depth values
 int tau_size = 0;
 
-double x_table[MAX_LOOKUP]; // Array to hold x values
-double F_table[MAX_LOOKUP]; // Array to hold F values
-double G_table[MAX_LOOKUP]; // Array to hold G values
+double x_table[MAX_LOOKUP];     // Array to hold x values
+double F_table[MAX_LOOKUP];     // Array to hold F values
+double G_table[MAX_LOOKUP];     // Array to hold G values
 int lookup_size = 0;

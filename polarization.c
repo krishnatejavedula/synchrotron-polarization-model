@@ -4,18 +4,17 @@
 /*
 Synchrotron Polarization Calculator
 
+Author: Krishna Teja Vedula
+
 Compilation:
-  gcc code.c -lgsl -lgslcblas -lm
+  gcc polarization.c -lgsl -lgslcblas -lm -o polarization
 
 Required libraries:
   - GSL        : GNU Scientific Library
   - libm       : Standard math library
 
-Usage (SSA off):
-  ./code <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> [LookupTable.dat]
-
-Usage (SSA on):
-  ./code <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> [LookupTable.dat] <nu-tau.dat>
+Usage:
+  ./polarization <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> [LookupTable.dat] [nu-tau.dat]
 
 Required input files:
   1. Electron-Distribution.dat
@@ -31,9 +30,13 @@ Output file:
   4. Output.dat
      Calculated polarization degree file: nu, PD
 
-Optional file:
+Optional input files:
   5. LookupTable.dat
-     Precomputed lookup table for kernel values
+     Precomputed lookup table for kernel values (auto-generated if missing, when polarization_mode is POL_LOOKUP)
+
+  6. nu-tau.dat
+     SSA file: nu, tau (only needed when ssa_mode is SSA_ON)
+
 */
 // ------------------ Libraries ------------------
 
@@ -54,6 +57,7 @@ double integrand_G(double gamma, void *params);
 double integrand_F(double gamma, void *params);
 void load_data(const char *filename);
 void load_lookup_table(const char *filename);
+void generate_lookup_table(const char *filename);
 void load_spectrum(const char *filename);
 double log_integrate(double (*func)(double, void *), double gamma_min, double gamma_max, void *params, int n_steps);
 double calculate_polarization(double K_scale, double nu);
@@ -62,11 +66,14 @@ void load_ftotal(const char *filename);
 void load_tau(const char *filename);
 double calculate_ssa_weight(double tau);
 double calculate_x(void);
+void apply_scaling_mode(void);
 
 // ------------------ Main code ------------------
 
 int main(int argc, char *argv[])
 {
+    apply_scaling_mode();
+
     if (polarization_mode == POL_BESSEL)
     {
         gsl_set_error_handler_off();
@@ -121,9 +128,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Load lookup table if needed
+    // Load lookup table if needed, generating one first if it doesn't exist
     if (polarization_mode == POL_LOOKUP)
     {
+        FILE *check = fopen(argv[5], "r");
+        if (check)
+        {
+            fclose(check);
+        }
+        else
+        {
+            printf("Lookup table %s not found. Generating...\n", argv[5]);
+            generate_lookup_table(argv[5]);
+        }
         load_lookup_table(argv[5]);
     }
 
@@ -169,7 +186,7 @@ int main(int argc, char *argv[])
         double polarization = calculate_polarization(K_scale, nu);
         double eta = calculate_eta();
         double ssa_weight = 1.0;
-        if (ssa_mode == SSA_ESCAPE_FACTOR)
+        if (ssa_mode == SSA_ON)
         {
             if (nu >= tau_nu[0] && nu <= tau_nu[tau_size - 1])
             {
@@ -177,7 +194,11 @@ int main(int argc, char *argv[])
                 ssa_weight = calculate_ssa_weight(tau);
             }
         }
-        double P_final = polarization * ssa_weight * synF_ratio * (1 - eta) * ff;
+        double flux_factor = (flux_weight_mode == FLUX_WEIGHT_ON) ? synF_ratio : 1.0;
+        double disorder_factor = (field_disorder_mode == FIELD_DISORDER_ON) ? (1 - eta) : 1.0;
+        double turbulence_factor = (turbulence_mode == TURBULENCE_ON) ? ft : 1.0;
+
+        double P_final = polarization * ssa_weight * flux_factor * disorder_factor * turbulence_factor;
 
         if (isfinite(P_final))
         {
@@ -205,6 +226,20 @@ int main(int argc, char *argv[])
 
 // ------------------ Functions ------------------
 
+void apply_scaling_mode(void)
+{
+    // POL_UNSCALED forces every factor off, overriding the switches below.
+    // POL_SCALED applies no override — ssa_mode, flux_weight_mode,
+    // field_disorder_mode, and turbulence_mode take effect as set.
+    if (scaling_mode == POL_UNSCALED)
+    {
+        ssa_mode = SSA_OFF;
+        flux_weight_mode = FLUX_WEIGHT_OFF;
+        field_disorder_mode = FIELD_DISORDER_OFF;
+        turbulence_mode = TURBULENCE_OFF;
+    }
+}
+
 double calculate_ssa_weight(double tau)
 {
     if (!isfinite(tau) || tau <= 1.0e-10)
@@ -227,7 +262,7 @@ double calculate_ssa_weight(double tau)
 
 double calculate_K(double nu)
 {
-    return (4 * M_PI * nu * me * c) / (3 * e_charge * B);
+    return (4 * M_PI * nu * me * c_light) / (3 * e_charge * B);
 }
 
 double syn_F(double K_gamma2)
@@ -387,6 +422,29 @@ void load_lookup_table(const char *filename)
     }
 }
 
+void generate_lookup_table(const char *filename)
+{
+    FILE *file = fopen(filename, "w");
+    if (!file)
+    {
+        printf("Error: Cannot create lookup table %s\n", filename);
+        exit(1);
+    }
+
+    double dlog = (double)(X_MAX_LOG - X_MIN_LOG) / (NUM_POINTS - 1);
+
+    for (int i = 0; i < NUM_POINTS; i++)
+    {
+        double x = pow(10.0, X_MIN_LOG + i * dlog);
+        double F_val = (lookup_mode == LOOKUP_BESSEL) ? syn_F(x) : analytical_F(x);
+        double G_val = (lookup_mode == LOOKUP_BESSEL) ? syn_G(x) : analytical_G(x);
+        fprintf(file, "%.10e %.10e %.10e\n", x, F_val, G_val);
+    }
+
+    fclose(file);
+    printf("Generated lookup table (%d points) -> %s\n", NUM_POINTS, filename);
+}
+
 double interpolate(double gamma_query)
 {
     if (data_size < 2)
@@ -519,10 +577,10 @@ double calculate_deltaB()
 {
     double N_gamma = calculate_N_gamma(1000); // Assumed comoving density
 
-    double R_blob = (t_var * deltaD * c) / (1.0 + zz);
+    double R_blob = (t_var * deltaD * c_light) / (1.0 + zz);
     double w0 = 2.0 * M_PI / R_blob;
 
-    double numerator = 24.0 * D0 * N_gamma * c * me;
+    double numerator = 24.0 * D0 * N_gamma * c_light * me;
     double denominator = M_PI * pow(R_blob, 3.0) * w0;
 
     double delta_B = sqrt(numerator / denominator);
