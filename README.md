@@ -53,7 +53,9 @@ Set in `polarization.h` (defaults shown):
 
 The value written to `Output.dat` is:
 
-$\Pi_{\text{final}} = F_{SSA} \ F_{Syn} \ F_{\eta} \ \Pi(\omega)$
+$$
+\Pi_{\text{final}} = F_{SSA} \ F_{Syn} \ F_{\eta} \ \Pi(\omega)
+$$
 
 All switches default to on (fully scaled — `scaling_mode = POL_SCALED`). Setting `scaling_mode = POL_UNSCALED` reduces `P_final` to the intrinsic Π(ω) by turning the other four switches off automatically; you don't need to touch them individually.
 
