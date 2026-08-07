@@ -57,7 +57,7 @@ $$
 \Pi_{\text{final}} = F_{SSA} \ F_{Syn} \ F_{\eta} \ F_T \ \Pi(\omega)
 $$
 
-All switches default to on (fully scaled — `scaling_mode = POL_SCALED`). Setting `scaling_mode = POL_UNSCALED` reduces `P_final` to the intrinsic Π(ω) by turning the other four switches off automatically; you don't need to touch them individually.
+All switches default to on (fully scaled — `scaling_mode = POL_SCALED`). Setting `scaling_mode = POL_UNSCALED` reduces `P_final` to the intrinsic Π(ω) by turning the other four switches off automatically without having to switch them off individually.
 
 ## Compilation
 
