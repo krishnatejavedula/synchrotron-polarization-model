@@ -2,7 +2,7 @@
 
 ## Background and Motivation
 
-The synchrotron emission from relativistic electrons is intrinsically linearly polarized due to the anisotropic nature of their acceleration in magnetic fields. The frequency-dependent polarization degree is given by:
+The synchrotron emission from relativistic electrons is intrinsically linearly polarized. The frequency-dependent polarization degree is given by:
 
 $$
 \Pi(\omega) = \frac{\int_{0}^{\infty} \ G(x) N(\gamma) \ dx}{\int_{0}^{\infty} F(x)\ N(\gamma)\ dx}
@@ -13,7 +13,7 @@ where:
 * $N(\gamma)$: electron energy distribution
 * $F(x), G(x)$: synchrotron kernel functions
 
-This code instead computes the polarization using a **general electron energy distribution**, enabling a fully numerical and physically consistent treatment.
+Frequently this expression is simplified by assuming a power law particle distribution. This code instead computes the polarization using a **general electron energy distribution**. This aproach is a fully numerical implementation that can physically connect polarization analysis to a complementary spectral analysis.
 
 ## Parameters related to turbulence
 
@@ -28,20 +28,20 @@ const double D0      = 3.0e-6;     // Diffusion coefficient
 const double ft      = 1;          // Turbulent scaling factor
 ```
 
-These parameters control the emitting region, magnetic field properties, relativistic boosting, and turbulence, facilitate self-consistency between particle transport and polarization calculations.
+These parameters can be set to values consistent with a spectral analysis and pertain to the emitting region, magnetic field properties, relativistic boosting, and turbulence, which can facilitate self-consistency between e.g. a particle transport model and this polarization calculation.
 
-`parameters.h` also defines the physical constants used in the calculation (speed of light, electron mass, electron charge, in CGS-Gaussian units). These are fixed and not meant to be changed.
+The library file `parameters.h` also defines the physical constants used in the calculation (e.g. speed of light, electron mass, electron charge, in CGS-Gaussian units). These are fixed and not meant to be changed.
 
 ## Method Summary
 
 * Log-space integration of synchrotron functions $F(x), G(x)$
-* Linear interpolation of electron distribution $N(\gamma)$
-* Optional lookup tables for speed
-* Asymptotic approximations for extreme regimes
+* Linear interpolation of input electron distribution $N(\gamma)$
+* Optional lookup tables of the Bessel functions for computational efficiency
+* Asymptotic approximations for extreme regimes of the Bessel functions (helps prevent errors and also for computational efficiency)
 
 ## Configuration Switches
 
-Set in `polarization.h` (defaults shown):
+Settings available in `polarization.h` (defaults shown):
 
 * `polarization_mode` — `POL_BESSEL` / `POL_LOOKUP` (default) / `POL_ANALYTICAL`: how F(x), G(x) are evaluated.
 * `lookup_mode` — `LOOKUP_BESSEL` / `LOOKUP_ANALYTICAL` (default): how the lookup table itself is generated.
@@ -51,7 +51,7 @@ Set in `polarization.h` (defaults shown):
 * `field_disorder_mode` — `FIELD_DISORDER_OFF` / `FIELD_DISORDER_ON` (default): include the $(1- \eta)$ field disorder factor.
 * `turbulence_mode` — `TURBULENCE_OFF` / `TURBULENCE_ON` (default): include the `ft` turbulence scaling factor.
 
-The value written to `Output.dat` is:
+The polarization degree value written to `Output.dat` is:
 
 $$
 \Pi_{\text{final}} = F_{SSA} \ F_{Syn} \ F_{\eta} \ F_T \ \Pi(\omega)
@@ -59,7 +59,9 @@ $$
 
 All switches default to on (fully scaled — `scaling_mode = POL_SCALED`). Setting `scaling_mode = POL_UNSCALED` reduces `P_final` to the intrinsic Π(ω) by turning the other four switches off automatically without having to switch them off individually.
 
-## Compilation
+## Compilation in Command Line
+
+The standard compilation anticipates the user has the GNU Scientific Library pre-installed. It is possible to compile the C code without GNU Tools, but you would need to comment out the GNU libraries in 'polarization.h' and use the analytical Bessel functions. 
 
 ```bash
 gcc polarization.c -lgsl -lgslcblas -lm -o polarization
@@ -77,29 +79,29 @@ gcc polarization.c -lgsl -lgslcblas -lm -o polarization
 ./polarization <Electron-Distribution.dat> <Spectrum.dat> <FTotal.dat> <Output.dat> <LookupTable.dat> <nu-tau.dat>
 ```
 
-`LookupTable.dat` is required unless `polarization_mode` is set away from `POL_LOOKUP`. `nu-tau.dat` is required unless `ssa_mode` is `SSA_OFF`.
+`LookupTable.dat` is required unless `polarization_mode` is not set to `POL_LOOKUP`. `nu-tau.dat` is required unless `ssa_mode` is set to `SSA_OFF`.
 
 ### Input Files
 
 * **Electron-Distribution.dat**
-  Columns: gamma, N(gamma)
+  Columns: <gamma> <N(gamma)>
 
 * **Spectrum.dat**
-  Columns: nu, nuFnu (synchrotron spectrum)
+  Columns: <nu> <nuFnu (synchrotron spectrum)>
 
 * **FTotal.dat**
-  Columns: nu, nuFnu (total SED)
+  Columns: <nu> <nuFnu (total SED)>
 
 * **LookupTable.dat**
-  Precomputed values of synchrotron kernel functions
+  Precomputed values of synchrotron kernel functions - DO NOT EDIT
 
 * **nu-tau.dat**
-  Columns: nu, tau (SSA optical depth)
+  Columns: <nu> <tau (SSA optical depth)>
 
-*(All files: two columns, no headers)*
+*(All files: two space-separated columns, no headers)*
 
 
 ### Output
 
 * **Output.dat**
-  Columns: nu, PD (polarization degree, 0–1)
+  Columns: <nu> <PD (polarization degree, 0–1)>
