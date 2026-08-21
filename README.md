@@ -84,19 +84,19 @@ gcc polarization.c -lgsl -lgslcblas -lm -o polarization
 ### Input Files
 
 * **Electron-Distribution.dat**
-  Columns: <&gamma> <N(gamma)>
+  Columns: [gamma] [N(gamma)]
 
 * **Spectrum.dat**
-  Columns: <&nu> <nuFnu (synchrotron spectrum)>
+  Columns: [nu] [nuFnu (synchrotron spectrum)]
 
 * **FTotal.dat**
-  Columns: <&nu> <nuFnu (total SED)>
+  Columns: [nu] [nuFnu (total SED)]
 
 * **LookupTable.dat**
   Precomputed values of synchrotron kernel functions - DO NOT EDIT
 
 * **nu-tau.dat**
-  Columns: <&nu> <tau (SSA optical depth)>
+  Columns: [nu] [tau (SSA optical depth)]
 
 *(All files: two space-separated columns, no headers)*
 
