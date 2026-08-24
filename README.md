@@ -43,32 +43,38 @@ The library file `parameters.h` also defines the physical constants used in the 
 
 Settings available in `polarization.h` (defaults shown):
 
-* `polarization_mode` — `POL_BESSEL` / `POL_LOOKUP` (default) / `POL_ANALYTICAL`: 
+* `polarization_mode` - `POL_BESSEL` / `POL_LOOKUP` (default) / `POL_ANALYTICAL`: 
   These switches help configure how the synchrotron functions F(x), G(x) are evaluated.
   `POL_BESSEL` - Computes F(x), G(x) using the GSL library functions.
   `POL_ANALYTICAL` - Computes F(x), G(x) using analytical functions in the absence of the GSL library.
   `POL_LOOKUP` - Uses lookup tables to pre-compute F(x), G(x) for computational efficiency. 
 
 
-* `lookup_mode` — `LOOKUP_BESSEL` / `LOOKUP_ANALYTICAL` (default)
-  Controls which method is used to generate the lookup table (only relevant when a table is actually being built).
+    * `lookup_mode` - `LOOKUP_BESSEL` / `LOOKUP_ANALYTICAL` (default)
+       Controls which method is used to generate the lookup table (only relevant when a table is actually being built).
 
-*  `scaling_mode` — `POL_UNSCALED` / `POL_SCALED` (default)
-  Master switch for the four factors below, applied once at the start of `main()`.
-  - `POL_UNSCALED` — forces `ssa_mode`, `flux_weight_mode`, `field_disorder_mode`, and `turbulence_mode` all off, overriding whatever they're individually set to.
-  - `POL_SCALED` — applies no override. The four switches below take effect exactly as set, so you can enable just one or two factors (e.g. SSA only) by leaving `scaling_mode = POL_SCALED` and setting the others to `_OFF`.
+The `POL_BESSEL` and `POL_ANALYTICAL` switches are primarily used for testing purposes. For computational efficiecy its recommended to use the default `POL_LOOKUP` option. Based on if you have the GSL library installed, the `lookup_mode` switch can be used to configure whether it uses Bessel functions in the GSL library or the analytical functions to compute it mathematically. 
 
-* `ssa_mode` — `SSA_ON` / `SSA_OFF` (default)
+The default state is to use a lookup file. The code will look for a lookup file based on the filename provided in the arguments. If a file is found it will check if it is exists and proceed to use it. If no file is found it will create the lookup file automatically on the first run and you may expect the run to take longer during this step. Once the file is created the following runs would be faster.
+
+Note: Before running the code please make sure the lookup table is properly generated or if it exists the file is correct. 
+
+*  `scaling_mode` - `POL_UNSCALED` / `POL_SCALED` (default)
+  Master switch for the four factors below.
+  - `POL_UNSCALED` - forces `ssa_mode`, `flux_weight_mode`, `field_disorder_mode`, and `turbulence_mode` all off, overriding whatever they're individually set to.
+  - `POL_SCALED` - applies no override. The four switches below take effect exactly as set, so you can enable just one or two factors (e.g. SSA only) by leaving `scaling_mode = POL_SCALED` and setting the others to `_OFF`.
+
+     * `ssa_mode` - `SSA_ON` / `SSA_OFF` (default)
   Whether SSA escape weighting, $(1 - e^{-\tau})/\tau$, is applied. Defaults to `SSA_OFF`.
 
-* `flux_weight_mode` — `FLUX_WEIGHT_OFF` / `FLUX_WEIGHT_ON` (default)
+     * `flux_weight_mode` - `FLUX_WEIGHT_OFF` / `FLUX_WEIGHT_ON` (default)
   Whether the synchrotron/total flux ratio is included.
 
-* `field_disorder_mode` — `FIELD_DISORDER_OFF` / `FIELD_DISORDER_ON` (default)
+     * `field_disorder_mode` - `FIELD_DISORDER_OFF` / `FIELD_DISORDER_ON` (default)
   Whether the $(1 - \eta)$ field disorder factor is included.
 
-* `turbulence_mode` — `TURBULENCE_OFF` / `TURBULENCE_ON` (default)
-  Whether the `ft` turbulence scaling factor is included
+     * `turbulence_mode` - `TURBULENCE_OFF` / `TURBULENCE_ON` (default)
+  Whether the `ft` turbulence scaling factor is included.
 
 The polarization degree value written to `Output.dat` is:
 
@@ -76,7 +82,7 @@ $$
 \Pi_{\text{final}} = F_{SSA} \ F_{Syn} \ F_{\eta} \ F_T \ \Pi(\omega)
 $$
 
-All switches default to on (fully scaled — `scaling_mode = POL_SCALED`). Setting `scaling_mode = POL_UNSCALED` reduces `P_final` to the intrinsic Π(ω) by turning the other four switches off automatically without having to switch them off individually.
+All switches default to on (fully scaled - `scaling_mode = POL_SCALED`). Setting `scaling_mode = POL_UNSCALED` reduces `P_final` to the intrinsic Π(ω) by turning the other four switches off automatically without having to switch them off individually.
 
 ## Compilation in Command Line
 
