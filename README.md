@@ -43,13 +43,32 @@ The library file `parameters.h` also defines the physical constants used in the 
 
 Settings available in `polarization.h` (defaults shown):
 
-* `polarization_mode` — `POL_BESSEL` / `POL_LOOKUP` (default) / `POL_ANALYTICAL`: how F(x), G(x) are evaluated.
-* `lookup_mode` — `LOOKUP_BESSEL` / `LOOKUP_ANALYTICAL` (default): how the lookup table itself is generated.
-* `scaling_mode` — `POL_UNSCALED` / `POL_SCALED` (default): master switch for the four factors below, applied once at the start of `main()`. `POL_UNSCALED` forces `ssa_mode`, `flux_weight_mode`, `field_disorder_mode`, and `turbulence_mode` all off, overriding whatever they're set to. `POL_SCALED` applies no override — the four switches take effect as set individually, so you can enable just one or two factors (e.g. SSA only) by leaving `scaling_mode = POL_SCALED` and setting the others to `_OFF`.
-* `ssa_mode` — `SSA_ON` / `SSA_OFF` (default): exclude SSA weighting.
-* `flux_weight_mode` — `FLUX_WEIGHT_OFF` / `FLUX_WEIGHT_ON` (default): include the synchrotron/total flux ratio.
-* `field_disorder_mode` — `FIELD_DISORDER_OFF` / `FIELD_DISORDER_ON` (default): include the $(1- \eta)$ field disorder factor.
-* `turbulence_mode` — `TURBULENCE_OFF` / `TURBULENCE_ON` (default): include the `ft` turbulence scaling factor.
+* `polarization_mode` — `POL_BESSEL` / `POL_LOOKUP` (default) / `POL_ANALYTICAL`: 
+  These switches help configure how the synchrotron functions F(x), G(x) are evaluated.
+  `POL_BESSEL` - Computes F(x), G(x) using the GSL library functions.
+  `POL_ANALYTICAL` - Computes F(x), G(x) using analytical functions in the absence of the GSL library.
+  `POL_LOOKUP` - Uses lookup tables to pre-compute F(x), G(x) for computational efficiency. 
+
+
+* `lookup_mode` — `LOOKUP_BESSEL` / `LOOKUP_ANALYTICAL` (default)
+  Controls which method is used to generate the lookup table (only relevant when a table is actually being built).
+
+*  `scaling_mode` — `POL_UNSCALED` / `POL_SCALED` (default)
+  Master switch for the four factors below, applied once at the start of `main()`.
+  - `POL_UNSCALED` — forces `ssa_mode`, `flux_weight_mode`, `field_disorder_mode`, and `turbulence_mode` all off, overriding whatever they're individually set to.
+  - `POL_SCALED` — applies no override. The four switches below take effect exactly as set, so you can enable just one or two factors (e.g. SSA only) by leaving `scaling_mode = POL_SCALED` and setting the others to `_OFF`.
+
+* `ssa_mode` — `SSA_ON` / `SSA_OFF` (default)
+  Whether SSA escape weighting, $(1 - e^{-\tau})/\tau$, is applied. Defaults to `SSA_OFF`.
+
+* `flux_weight_mode` — `FLUX_WEIGHT_OFF` / `FLUX_WEIGHT_ON` (default)
+  Whether the synchrotron/total flux ratio is included.
+
+* `field_disorder_mode` — `FIELD_DISORDER_OFF` / `FIELD_DISORDER_ON` (default)
+  Whether the $(1 - \eta)$ field disorder factor is included.
+
+* `turbulence_mode` — `TURBULENCE_OFF` / `TURBULENCE_ON` (default)
+  Whether the `ft` turbulence scaling factor is included
 
 The polarization degree value written to `Output.dat` is:
 
@@ -105,3 +124,7 @@ gcc polarization.c -lgsl -lgslcblas -lm -o polarization
 
 * **Output.dat**
   Columns: <nu> <PD (polarization degree, 0–1)>
+
+## Parameter Study
+
+Results from a parameter study covering all the model's parameters are included in this repository as machine-readable text files, for reference, in [`parameter-study-mrt`](./parameter-study-mrt).

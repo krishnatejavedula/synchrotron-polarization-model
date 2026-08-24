@@ -5,6 +5,7 @@
 Synchrotron Polarization Calculator
 
 Author: Krishna Teja Vedula
+Advisor: Tiffany R. Lewis
 
 Compilation:
   gcc polarization.c -lgsl -lgslcblas -lm -o polarization
