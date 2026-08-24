@@ -55,7 +55,7 @@ Settings available in `polarization.h` (defaults shown):
 
 The `POL_BESSEL` and `POL_ANALYTICAL` switches are primarily used for testing purposes. For computational efficiecy its recommended to use the default `POL_LOOKUP` option. Based on if you have the GSL library installed, the `lookup_mode` switch can be used to configure whether it uses Bessel functions in the GSL library or the analytical functions to compute it mathematically. 
 
-The default state is to use a lookup file. The code will look for a lookup file based on the filename provided in the arguments. If a file is found it will check if it is exists and proceed to use it. If no file is found it will create the lookup file automatically on the first run and you may expect the run to take longer during this step. Once the file is created the following runs would be faster.
+The default state is to use a lookup file. The code will look for a lookup file based on the filename provided in the arguments. If a file is found it will proceed to use it. If no file is found it will create the lookup file automatically on the first run and you may expect the run to take longer during this step. Once the file is created the following runs would be faster.
 
 Note: Before running the code please make sure the lookup table is properly generated or if it exists the file is correct. 
 
